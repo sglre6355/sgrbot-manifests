@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sgrbot
+spec:
+  selector:
+    matchLabels:
+      app: sgrbot
+  template:
+    metadata:
+      labels:
+        app: sgrbot
+    spec:
+      containers:
+        - name: sgrbot
+          image: ghcr.io/sglre6355/sgrbot
+          env:
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: sgrbot
+                  key: DISCORD_TOKEN
