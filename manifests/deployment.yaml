@@ -11,12 +11,60 @@ spec:
       labels:
         app: sgrbot
     spec:
+      volumes:
+        - name: lavalink
+          emptyDir: {}
       containers:
         - name: sgrbot
           image: ghcr.io/sglre6355/sgrbot
           env:
-            - name: DISCORD_TOKEN
+            - name: LAVALINK_ADDRESS
+              value: localhost:2333
+            - name: LAVALINK_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: sgrbot
-                  key: DISCORD_TOKEN
+                  name: lavalink
+                  key: LAVALINK_SERVER_PASSWORD
+          envFrom:
+            - secretRef:
+                name: sgrbot
+      initContainers:
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.4.0
+          env:
+            - name: GITSYNC_REPO
+              value: https://github.com/sglre6355/lavalink-config
+            - name: GITSYNC_ONE_TIME
+              value: "true"
+            - name: GITSYNC_LINK
+              value: config
+            - name: GITSYNC_ROOT
+              value: /git
+            - name: GITSYNC_HTTP_BIND
+              value: :1234
+          volumeMounts:
+            - name: lavalink
+              mountPath: /git
+        - name: lavalink
+          image: ghcr.io/lavalink-devs/lavalink:4
+          restartPolicy: Always
+          env:
+            - name: _JAVA_OPTIONS
+              value: -Xmx6G
+          envFrom:
+            - secretRef:
+                name: lavalink
+          volumeMounts:
+            - name: lavalink
+              mountPath: /opt/Lavalink/application.yaml
+              subPath: config/application.yaml
+              readOnly: true
+            - name: lavalink
+              mountPath: /opt/Lavalink/plugins/
+              subPath: plugins/
+          startupProbe:
+            tcpSocket:
+              port: 2333
+            initialDelaySeconds: 5
+            failureThreshold: 30
+            periodSeconds: 2
